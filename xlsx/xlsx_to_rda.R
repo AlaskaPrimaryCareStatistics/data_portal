@@ -1,0 +1,7 @@
+setwd("xlsx")
+Organizations <- readxl::read_xlsx("Organizations.xlsx")
+Sites <- readxl::read_xlsx("Sites.xlsx")
+setwd("../rds")
+save(Organizations, file="Organizations.rda")
+save(Sites, file="Sites.rda")
+setwd("../")

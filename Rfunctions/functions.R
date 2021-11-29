@@ -319,3 +319,22 @@ survival_plot <- function(data, xvar, yvar, ovar, dr, ylim, ci, main){
     plot_surv(times, nps, dates, ovar, ylim=ylim, lx="bottomleft", leg=T, ci=ci, main=main)
   }
 }
+
+
+#' @param data
+#' @param organization
+landing_map <- function(Sites, organization){
+  if (organization == "All"){
+    mapData <- Sites
+  }else{
+    org_id <- Organizations$ORGANIZATION_ID[Organizations$ORGANIZATION_NAME==organization]
+    mapData <- Sites[Sites$ORGANIZATION_ID==org_id,]
+  }
+  p <- leaflet() %>%
+          addTiles() %>%
+          addMarkers(data = mapData, lng = ~LONGITUDE, lat = ~LATITUDE, popup = ~SITE_NAME)
+  return(p)
+}
+
+
+

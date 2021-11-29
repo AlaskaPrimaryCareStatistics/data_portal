@@ -4,6 +4,8 @@
     library(shiny)
     library(shinydashboard)
     library(leaflet)
+    library(dplyr)
+    library(mailtoR)
     setwd("Rfunctions")
     for (file in list.files()){
         source(file)
@@ -18,6 +20,7 @@
 ##### Global Variables #####
 {
     strat_choices <- c("Age","Sex","Race","Ethnicity","Language","Insurance Class","Alcohol Use Disorder","Depression Diagnosis","Tobacco Use")
+    org_choices <- c("All", Organizations$ORGANIZATION_NAME)
 }
 
 ##### Set Up User Interface #####
@@ -29,7 +32,7 @@ ui <- dashboardPage(
     ### Side Bar ###
     dashboardSidebar(
         sidebarMenu(
-            # menuItem("About", tabName = "tab1"),
+            menuItem("About", tabName = "tab1"),
             menuItem("Covid-19 Infections", tabName = "tab2"),
             menuItem("Covid-19 Vaccinations", tabName = "tab3"),
             menuItem("Telehealth Utilization", tabName = "tab4")
@@ -40,20 +43,60 @@ ui <- dashboardPage(
     dashboardBody(
         tabItems(
             
-            # ### Tab 1 --> Landing Page ###
-            # tabItem(
-            #     tabName = "tab1",
-            #     h3("Welcome to the Alaska Primary Care Associations Data Portal"),
-            #     h2("About"),
-            #     m <- leaflet() %>%
-            #         addTiles() %>%
-            #         addMarkers(data = mapData, lng = ~lon, lat = ~lat, popup = ~center),
-            #     url_1 <- a("APCA Website", href="https://alaskapca.org/"),
-            #     url_2 <- a("APCA GitHub Page", href="https://github.com/AlaskaPrimaryCareStatistics")
-            # ),
-            
-            
-            
+            ### Tab 1 --> Landing Page ###
+            tabItem(
+              
+                tabName = "tab1",
+                div(
+                  style = "text-align: center; margin-bottom:25px;",
+                  img(src="apca_logo.png")
+                ),
+                div(
+                  "Since its founding over twenty-five years ago, the APCA has grown to serve twenty-nine Federally Qualified Health Centers and Look Alikes in addition to saftey net providers, and stakeholders across the State of Alaska. Our growning network consists of more that 200 community health centers spread across the State of Alaska. The purpose of APCA's data portal is to provide policy makers, public health officials, stakeholders, and the general public with timely population health statistics that can be used to inform the future of healthcare within the State of Alaska."
+                ),
+                div(
+                  style = "text-align: center; margin-bottom:25px;",
+                  h2("Community Health Centers in Our Network:")
+                ),
+                div(
+                  style = "text-align: center; border: 1px solid grey; padding: 10px; background-color: rgb(211,211,211);",
+                  div(
+                    style="font-size:20px; padding: 0px; ",
+                    strong("Organization:")
+                  ),
+                  splitLayout(
+                    radioButtons(
+                      inputId = "org_choice",
+                      label = NULL,
+                      choices = org_choices,
+                      inline = T
+                    )
+                  )
+                ),
+                div(
+                  style = "border: 1px solid grey; padding:20px; background-color: rgb(255,255,255);",
+                  leafletOutput(
+                    outputId = "p1"
+                  )
+                ),
+                splitLayout(
+                  style = "padding: 0px; margin-top: 25px; background-color: white;",
+                  cellWidths = c("33%", "33%", "33%"),
+                  tags$div(
+                    style = "text-align: left;",
+                    url_1 <- a("APCA Website", href="https://alaskapca.org/")
+                  ),
+                  tags$div(
+                    style = "text-align: center;",
+                    url_2 <- a("APCA GitHub Page", href="https://github.com/AlaskaPrimaryCareStatistics")
+                  ),
+                  tags$div(
+                    style = "text-align: right;",
+                    mailtoR(email = "jordanB@alaskapca.org",
+                            text = "Contact")
+                  )
+                )
+            ),
             ### Tab 2 --> Covid-19 Infections ###
             tabItem(
                 tabName = "tab2",
@@ -140,11 +183,10 @@ ui <- dashboardPage(
                 div(
                     style = "border: 1px solid grey; padding:20px; background-color: rgb(255,255,255);",
                     plotOutput(
-                        outputId = "p21"
+                        outputId = "p2"
                     )
-                )
-                # ,
-                # tags$a("Click here to download the full report", href="report.pdf")
+                ),
+                tags$a("Click here to download the full report", href="report.pdf")
             ),
             
             ### Tab 3 --> Covid-19 Vaccinations ###
@@ -231,11 +273,10 @@ ui <- dashboardPage(
                 div(
                     style = "border: 1px solid grey; padding:20px; background-color: rgb(255,255,255);",
                     plotOutput(
-                        outputId = "p31"
+                        outputId = "p3"
                     )
                 )
-                # ,
-                # tags$a("Click here to download the full report", href="report.pdf")
+                ,tags$a("Click here to download the full report", href="report.pdf")
             ),
             ### Tab 4 --> Covid-19 Vaccinations ###
             tabItem(
@@ -318,11 +359,11 @@ ui <- dashboardPage(
                 div(
                     style = "border: 1px solid grey; padding:20px; background-color: rgb(255,255,255);",
                     plotOutput(
-                        outputId = "p41"
+                        outputId = "p4"
                     )
                 )
-                # ,
-                # tags$a("Click here to download the full report", href="report.pdf")
+                ,
+                tags$a("Click here to download the full report", href="report.pdf")
             )
         )    
     )
@@ -331,10 +372,24 @@ ui <- dashboardPage(
 ##### SERVER LOGIC #####
 server <- function(input, output) {
   
+    # Landing page map #
+    output$p1 <- renderLeaflet(
+      {
+        if (input$org_choice == "All"){
+          mapData <- Sites
+        }else{
+          org_id <- Organizations$ORGANIZATION_ID[Organizations$ORGANIZATION_NAME==input$org_choice]
+          mapData <- Sites[Sites$ORGANIZATION_ID==org_id,]
+        }
+        leaflet() %>%
+          addTiles() %>%
+          addMarkers(data = mapData, lng = ~LONGITUDE, lat = ~LATITUDE, popup = ~SITE_NAME)
+      }
+    )
     
-  
+    
     # tab 2 --> Covid --> plot 1 #
-    output$p21 <- renderPlot(
+    output$p2 <- renderPlot(
         {
           if (input$surv_cov=="Percent of Patients Diagnosed with New Case of Covid-19 During Encounter"){
             see_prop(
@@ -369,7 +424,7 @@ server <- function(input, output) {
     )
     
     # tab 3 --> Vaccination --> plot 1 #
-    output$p31 <- renderPlot(
+    output$p3 <- renderPlot(
         {
           if (input$surv_vac=="Percent of Patients Receiving Covid-19 Vaccination During Encounter"){
             see_prop(
@@ -396,14 +451,14 @@ server <- function(input, output) {
                 dr = input$dr_vac, 
                 ylim = c(0.6,1)*100,
                 ci = input$ci_vac,
-                main = input$surv_cov
+                main = input$surv_vac
               )
           }
         }
     )
     
     # tab 4 --> Telehealth --> plot 1 #
-    output$p41 <- renderPlot(
+    output$p4 <- renderPlot(
         {
             see_prop(
                 data = data_telehealth,
